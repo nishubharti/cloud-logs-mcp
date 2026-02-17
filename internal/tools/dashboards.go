@@ -494,10 +494,32 @@ func (t *CreateDashboardTool) InputSchema() interface{} {
 										{
 											"id":    map[string]interface{}{"value": "widget-1"},
 											"title": "Error Count by Severity",
+											"appearance": map[string]interface{}{
+												"width": 0,
+											},
 											"definition": map[string]interface{}{
 												"line_chart": map[string]interface{}{
+													"legend": map[string]interface{}{
+														"is_visible":     true,
+														"group_by_query": true,
+													},
+													"tooltip": map[string]interface{}{
+														"show_labels": false,
+														"type":        "all",
+													},
 													"query_definitions": []map[string]interface{}{
 														{
+															"id":                 "query-uuid-1",
+															"is_visible":         true,
+															"name":               "Query1",
+															"color_scheme":       "classic",
+															"data_mode_type":     "high_unspecified",
+															"scale_type":         "linear",
+															"unit":               "unspecified",
+															"series_count_limit": "20",
+															"resolution": map[string]interface{}{
+																"buckets_presented": 96,
+															},
 															"query": map[string]interface{}{
 																"logs": map[string]interface{}{
 																	"lucene_query": map[string]interface{}{
@@ -506,6 +528,7 @@ func (t *CreateDashboardTool) InputSchema() interface{} {
 																	"aggregations": []map[string]interface{}{
 																		{"count": map[string]interface{}{}},
 																	},
+																	"filters": []map[string]interface{}{},
 																	"group_bys": []map[string]interface{}{
 																		{"keypath": []string{"severity"}, "scope": "metadata"},
 																	},
@@ -513,6 +536,7 @@ func (t *CreateDashboardTool) InputSchema() interface{} {
 															},
 														},
 													},
+													"stacked_line": "unspecified",
 												},
 											},
 										},
@@ -552,6 +576,216 @@ func (t *CreateDashboardTool) Metadata() *ToolMetadata {
 	}
 }
 
+// ensureRequiredDashboardFields adds missing required fields to dashboard structure
+func ensureRequiredDashboardFields(layout interface{}) {
+	layoutMap, ok := layout.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	sections, ok := layoutMap["sections"].([]interface{})
+	if !ok {
+		return
+	}
+
+	for _, section := range sections {
+		sectionMap, ok := section.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		rows, ok := sectionMap["rows"].([]interface{})
+		if !ok {
+			continue
+		}
+
+		for _, row := range rows {
+			rowMap, ok := row.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			widgets, ok := rowMap["widgets"].([]interface{})
+			if !ok {
+				continue
+			}
+
+			for _, widget := range widgets {
+				widgetMap, ok := widget.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				// Ensure widget has appearance.width
+				if _, hasAppearance := widgetMap["appearance"]; !hasAppearance {
+					widgetMap["appearance"] = map[string]interface{}{"width": 0}
+				} else if appearance, ok := widgetMap["appearance"].(map[string]interface{}); ok {
+					if _, hasWidth := appearance["width"]; !hasWidth {
+						appearance["width"] = 0
+					}
+				}
+
+				definition, ok := widgetMap["definition"].(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				// Handle different widget types
+				if lineChart, ok := definition["line_chart"].(map[string]interface{}); ok {
+					ensureLineChartFields(lineChart)
+				}
+				if dataTable, ok := definition["data_table"].(map[string]interface{}); ok {
+					ensureDataTableFields(dataTable)
+				}
+				if pieChart, ok := definition["pie_chart"].(map[string]interface{}); ok {
+					ensureChartFields(pieChart)
+				}
+				if barChart, ok := definition["bar_chart"].(map[string]interface{}); ok {
+					ensureChartFields(barChart)
+				}
+				if gauge, ok := definition["gauge"].(map[string]interface{}); ok {
+					ensureGaugeFields(gauge)
+				}
+			}
+		}
+	}
+}
+
+// ensureLineChartFields ensures line chart has all required fields
+func ensureLineChartFields(lineChart map[string]interface{}) {
+	// Ensure legend
+	if _, hasLegend := lineChart["legend"]; !hasLegend {
+		lineChart["legend"] = map[string]interface{}{
+			"is_visible":     true,
+			"group_by_query": true,
+		}
+	}
+
+	// Ensure tooltip
+	if _, hasTooltip := lineChart["tooltip"]; !hasTooltip {
+		lineChart["tooltip"] = map[string]interface{}{
+			"show_labels": false,
+			"type":        "all",
+		}
+	}
+
+	// Ensure stacked_line
+	if _, hasStackedLine := lineChart["stacked_line"]; !hasStackedLine {
+		lineChart["stacked_line"] = "unspecified"
+	}
+
+	// Ensure query_definitions have required fields
+	if queryDefs, ok := lineChart["query_definitions"].([]interface{}); ok {
+		for _, qd := range queryDefs {
+			if qdMap, ok := qd.(map[string]interface{}); ok {
+				ensureQueryDefinitionFields(qdMap)
+			}
+		}
+	}
+}
+
+// ensureDataTableFields ensures data table has required fields
+func ensureDataTableFields(dataTable map[string]interface{}) {
+	// Ensure data_mode_type
+	if _, hasDataMode := dataTable["data_mode_type"]; !hasDataMode {
+		dataTable["data_mode_type"] = "high_unspecified"
+	}
+
+	// Ensure query has filters array
+	if query, ok := dataTable["query"].(map[string]interface{}); ok {
+		ensureQueryFilters(query)
+	}
+}
+
+// ensureChartFields ensures pie/bar charts have required fields
+func ensureChartFields(chart map[string]interface{}) {
+	// Ensure data_mode_type
+	if _, hasDataMode := chart["data_mode_type"]; !hasDataMode {
+		chart["data_mode_type"] = "high_unspecified"
+	}
+
+	// Ensure query has filters array
+	if query, ok := chart["query"].(map[string]interface{}); ok {
+		ensureQueryFilters(query)
+	}
+}
+
+// ensureGaugeFields ensures gauge has required fields
+func ensureGaugeFields(gauge map[string]interface{}) {
+	// Ensure data_mode_type
+	if _, hasDataMode := gauge["data_mode_type"]; !hasDataMode {
+		gauge["data_mode_type"] = "high_unspecified"
+	}
+
+	// Ensure query has filters array
+	if query, ok := gauge["query"].(map[string]interface{}); ok {
+		ensureQueryFilters(query)
+	}
+}
+
+// ensureQueryDefinitionFields ensures query definition has all required fields
+func ensureQueryDefinitionFields(queryDef map[string]interface{}) {
+	// Ensure is_visible
+	if _, hasVisible := queryDef["is_visible"]; !hasVisible {
+		queryDef["is_visible"] = true
+	}
+
+	// Ensure data_mode_type
+	if _, hasDataMode := queryDef["data_mode_type"]; !hasDataMode {
+		queryDef["data_mode_type"] = "high_unspecified"
+	}
+
+	// Ensure scale_type
+	if _, hasScale := queryDef["scale_type"]; !hasScale {
+		queryDef["scale_type"] = "linear"
+	}
+
+	// Ensure unit
+	if _, hasUnit := queryDef["unit"]; !hasUnit {
+		queryDef["unit"] = "unspecified"
+	}
+
+	// Ensure resolution
+	if _, hasResolution := queryDef["resolution"]; !hasResolution {
+		queryDef["resolution"] = map[string]interface{}{
+			"buckets_presented": 96,
+		}
+	} else if resolution, ok := queryDef["resolution"].(map[string]interface{}); ok {
+		if _, hasBuckets := resolution["buckets_presented"]; !hasBuckets {
+			resolution["buckets_presented"] = 96
+		}
+	}
+
+	// Ensure query has filters array
+	if query, ok := queryDef["query"].(map[string]interface{}); ok {
+		ensureQueryFilters(query)
+	}
+}
+
+// ensureQueryFilters ensures query has filters array
+func ensureQueryFilters(query map[string]interface{}) {
+	// Check logs query
+	if logs, ok := query["logs"].(map[string]interface{}); ok {
+		if _, hasFilters := logs["filters"]; !hasFilters {
+			logs["filters"] = []interface{}{}
+		}
+	}
+
+	// Check metrics query
+	if metrics, ok := query["metrics"].(map[string]interface{}); ok {
+		if _, hasFilters := metrics["filters"]; !hasFilters {
+			metrics["filters"] = []interface{}{}
+		}
+	}
+
+	// Check dataprime query
+	if dataprime, ok := query["dataprime"].(map[string]interface{}); ok {
+		if _, hasFilters := dataprime["filters"]; !hasFilters {
+			dataprime["filters"] = []interface{}{}
+		}
+	}
+}
+
 // Execute creates a new dashboard.
 // It first validates all queries in the layout to ensure they are syntactically correct.
 func (t *CreateDashboardTool) Execute(ctx context.Context, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
@@ -567,6 +801,9 @@ func (t *CreateDashboardTool) Execute(ctx context.Context, arguments map[string]
 
 	// Check for dry-run mode
 	dryRun, _ := GetBoolParam(arguments, "dry_run", false)
+
+	// Ensure all required fields are present in the layout
+	ensureRequiredDashboardFields(layout)
 
 	// Extract queries with syntax information for better validation
 	queryInfos := extractQueriesWithInfo(layout, "layout")
