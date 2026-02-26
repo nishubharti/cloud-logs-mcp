@@ -459,7 +459,7 @@ func TestEnsureRequiredDashboardFields(t *testing.T) {
 		// Verify line_chart has required fields
 		definition := widget["definition"].(map[string]interface{})
 		lineChart := definition["line_chart"].(map[string]interface{})
-		
+
 		assert.NotNil(t, lineChart["legend"])
 		assert.NotNil(t, lineChart["tooltip"])
 		assert.Equal(t, "unspecified", lineChart["stacked_line"])
@@ -467,7 +467,7 @@ func TestEnsureRequiredDashboardFields(t *testing.T) {
 		// Verify query definition has required fields
 		queryDefs := lineChart["query_definitions"].([]interface{})
 		queryDef := queryDefs[0].(map[string]interface{})
-		
+
 		assert.Equal(t, "high_unspecified", queryDef["data_mode_type"])
 		assert.Equal(t, "linear", queryDef["scale_type"])
 		assert.Equal(t, "unspecified", queryDef["unit"])
@@ -484,7 +484,7 @@ func TestEnsureRequiredDashboardFields(t *testing.T) {
 	t.Run("handles empty layout", func(t *testing.T) {
 		layout := map[string]interface{}{}
 		ensureRequiredDashboardFields(layout)
-		// Should not panic
+		assert.NotNil(t, layout, "layout should still be valid after processing")
 	})
 
 	t.Run("handles nil sections", func(t *testing.T) {
@@ -492,6 +492,6 @@ func TestEnsureRequiredDashboardFields(t *testing.T) {
 			"sections": nil,
 		}
 		ensureRequiredDashboardFields(layout)
-		// Should not panic
+		assert.NotNil(t, layout, "layout should still be valid after processing")
 	})
 }

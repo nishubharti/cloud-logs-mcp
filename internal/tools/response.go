@@ -474,6 +474,122 @@ func GenerateResultSummary(result map[string]interface{}, resultType string) str
 	return ""
 }
 
+// LogCluster groups similar log events by their message pattern.
+type LogCluster struct {
+	Pattern  string        `json:"pattern"`
+	Count    int           `json:"count"`
+	Severity string        `json:"severity"`
+	Events   []interface{} `json:"events"`
+}
+
+// ClusterLogs groups log events by their message content.
+// Events with the same message are placed in the same cluster.
+func ClusterLogs(events []interface{}) []LogCluster {
+	clusterMap := make(map[string]*LogCluster)
+	var order []string
+
+	for _, event := range events {
+		eventMap, ok := event.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		message := extractMessage(eventMap)
+		if message == "" {
+			message = "(empty)"
+		}
+
+		if cluster, exists := clusterMap[message]; exists {
+			cluster.Count++
+			cluster.Events = append(cluster.Events, event)
+		} else {
+			order = append(order, message)
+			clusterMap[message] = &LogCluster{
+				Pattern:  message,
+				Count:    1,
+				Severity: extractSeverityName(eventMap),
+				Events:   []interface{}{event},
+			}
+		}
+	}
+
+	clusters := make([]LogCluster, 0, len(clusterMap))
+	for _, msg := range order {
+		clusters = append(clusters, *clusterMap[msg])
+	}
+
+	// Sort by count descending
+	sort.Slice(clusters, func(i, j int) bool {
+		return clusters[i].Count > clusters[j].Count
+	})
+
+	return clusters
+}
+
+// FormatClusteredSummary clusters log events and returns a formatted summary string.
+// The limit parameter controls the maximum number of clusters shown.
+func FormatClusteredSummary(events []interface{}, limit int) string {
+	clusters := ClusterLogs(events)
+	if len(clusters) == 0 {
+		return "No log events to summarize."
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("## Clustered Log Summary (%d clusters from %d events)\n\n", len(clusters), len(events)))
+
+	shown := limit
+	if shown <= 0 || shown > len(clusters) {
+		shown = len(clusters)
+	}
+
+	for i := 0; i < shown; i++ {
+		c := clusters[i]
+		sb.WriteString(fmt.Sprintf("**[%s] %dx:** %s\n", c.Severity, c.Count, c.Pattern))
+	}
+
+	if len(clusters) > shown {
+		sb.WriteString(fmt.Sprintf("\n... and %d more clusters\n", len(clusters)-shown))
+	}
+
+	return sb.String()
+}
+
+// extractMessage pulls the message string from an event map.
+func extractMessage(eventMap map[string]interface{}) string {
+	if msg, ok := eventMap["message"].(string); ok {
+		return msg
+	}
+	if ud, ok := eventMap["user_data"].(string); ok {
+		return ud
+	}
+	return ""
+}
+
+// extractSeverityName returns a human-readable severity from an event map.
+func extractSeverityName(eventMap map[string]interface{}) string {
+	severityNames := map[int]string{
+		1: "Debug", 2: "Verbose", 3: "Info",
+		4: "Warning", 5: "Error", 6: "Critical",
+	}
+
+	var sev float64
+	if s, ok := eventMap["severity"].(float64); ok {
+		sev = s
+	} else if meta, ok := eventMap["metadata"].(map[string]interface{}); ok {
+		if s, ok := meta["severity"].(float64); ok {
+			sev = s
+		}
+	}
+
+	if name, ok := severityNames[int(sev)]; ok {
+		return name
+	}
+	if sev > 0 {
+		return fmt.Sprintf("Level %d", int(sev))
+	}
+	return "Unknown"
+}
+
 // ValueCount represents a value and its occurrence count
 type ValueCount struct {
 	Value string

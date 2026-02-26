@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -140,10 +139,10 @@ func (t *DiscoverLogFieldsTool) Execute(ctx context.Context, args map[string]int
 // analyzeLogFields extracts field structure from query results
 func analyzeLogFields(response map[string]interface{}) map[string]bool {
 	fields := make(map[string]bool)
-	
+
 	// Always include common fields
 	fields["text"] = true
-	
+
 	// Try to extract from results
 	if results, ok := response["results"].([]interface{}); ok {
 		for _, result := range results {
@@ -152,7 +151,7 @@ func analyzeLogFields(response map[string]interface{}) map[string]bool {
 			}
 		}
 	}
-	
+
 	return fields
 }
 
@@ -163,9 +162,9 @@ func extractFields(data map[string]interface{}, prefix string, fields map[string
 		if prefix != "" {
 			fieldPath = prefix + "." + key
 		}
-		
+
 		fields[fieldPath] = true
-		
+
 		// Recursively process nested objects
 		if nested, ok := value.(map[string]interface{}); ok {
 			extractFields(nested, fieldPath, fields)
@@ -176,9 +175,9 @@ func extractFields(data map[string]interface{}, prefix string, fields map[string
 // formatFieldDiscovery formats the discovered fields into a readable response
 func formatFieldDiscovery(fields map[string]bool, appName, subsysName, timeRange string) string {
 	var result strings.Builder
-	
+
 	result.WriteString("# Discovered Log Fields\n\n")
-	
+
 	if appName != "" || subsysName != "" {
 		result.WriteString("## Filters Applied:\n")
 		if appName != "" {
@@ -189,16 +188,16 @@ func formatFieldDiscovery(fields map[string]bool, appName, subsysName, timeRange
 		}
 		result.WriteString(fmt.Sprintf("- Time Range: %s\n\n", timeRange))
 	}
-	
+
 	result.WriteString("## Available Fields for Parsing Rules:\n\n")
 	result.WriteString("Use these field paths as `source_field` in your parsing rules:\n\n")
-	
+
 	// Group fields by prefix
 	textFields := []string{}
 	jsonFields := []string{}
 	kubernetesFields := []string{}
 	otherFields := []string{}
-	
+
 	for field := range fields {
 		switch {
 		case strings.HasPrefix(field, "text"):
@@ -211,7 +210,7 @@ func formatFieldDiscovery(fields map[string]bool, appName, subsysName, timeRange
 			otherFields = append(otherFields, field)
 		}
 	}
-	
+
 	if len(textFields) > 0 {
 		result.WriteString("### Text Fields (Main Log Content):\n")
 		for _, field := range textFields {
@@ -219,7 +218,7 @@ func formatFieldDiscovery(fields map[string]bool, appName, subsysName, timeRange
 		}
 		result.WriteString("\n")
 	}
-	
+
 	if len(jsonFields) > 0 {
 		result.WriteString("### JSON Fields (Structured Data):\n")
 		for _, field := range jsonFields {
@@ -227,7 +226,7 @@ func formatFieldDiscovery(fields map[string]bool, appName, subsysName, timeRange
 		}
 		result.WriteString("\n")
 	}
-	
+
 	if len(kubernetesFields) > 0 {
 		result.WriteString("### Kubernetes Fields (Metadata):\n")
 		for _, field := range kubernetesFields {
@@ -235,7 +234,7 @@ func formatFieldDiscovery(fields map[string]bool, appName, subsysName, timeRange
 		}
 		result.WriteString("\n")
 	}
-	
+
 	if len(otherFields) > 0 {
 		result.WriteString("### Other Fields:\n")
 		for _, field := range otherFields {
@@ -243,7 +242,7 @@ func formatFieldDiscovery(fields map[string]bool, appName, subsysName, timeRange
 		}
 		result.WriteString("\n")
 	}
-	
+
 	result.WriteString("\n## Example Usage:\n\n")
 	result.WriteString("```json\n")
 	result.WriteString("{\n")
@@ -267,7 +266,7 @@ func formatFieldDiscovery(fields map[string]bool, appName, subsysName, timeRange
 	result.WriteString("  }\n")
 	result.WriteString("}\n")
 	result.WriteString("```\n")
-	
+
 	return result.String()
 }
 
@@ -321,16 +320,20 @@ func (t *TestRuleGroupTool) InputSchema() interface{} {
 
 // Execute executes the tool
 func (t *TestRuleGroupTool) Execute(ctx context.Context, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	sampleText, err := GetStringParam(args, "sample_text", true)
 	if err != nil {
 		return NewToolResultError(err.Error()), nil
 	}
-	
+
 	pattern, err := GetStringParam(args, "regex_pattern", true)
 	if err != nil {
 		return NewToolResultError(err.Error()), nil
 	}
-	
+
 	// Test the pattern (simplified - in production would use actual regex engine)
 	result := fmt.Sprintf(`# Regex Pattern Test Results
 
@@ -359,7 +362,7 @@ Once you're satisfied with the pattern, use it in create_rule_group:
 
 **Related tools:** create_rule_group, discover_log_fields
 `, sampleText, pattern)
-	
+
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
@@ -367,15 +370,6 @@ Once you're satisfied with the pattern, use it in create_rule_group:
 			},
 		},
 	}, nil
-}
-
-// Helper function to format JSON for display
-func formatJSON(data interface{}) string {
-	bytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Sprintf("%v", data)
-	}
-	return string(bytes)
 }
 
 // Made with Bob

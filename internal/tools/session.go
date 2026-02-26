@@ -276,6 +276,22 @@ func GetSession() *SessionContext {
 	return GetSessionManager().GetOrCreateSession("", "default")
 }
 
+// GetSession implements SessionProvider by returning the session for the
+// current user, or the first available session if no current user is set.
+func (m *SessionManager) GetSession() *SessionContext {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if session, exists := m.sessions[currentUserID]; exists {
+		return session
+	}
+	// Fallback: return first available session
+	for _, session := range m.sessions {
+		return session
+	}
+	return nil
+}
+
 // GetOrCreateSession returns an existing session or creates a new one
 func (m *SessionManager) GetOrCreateSession(apiKey, instanceID string) *SessionContext {
 	userID := GenerateUserID(apiKey, instanceID)

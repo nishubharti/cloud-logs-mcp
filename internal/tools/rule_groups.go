@@ -333,34 +333,34 @@ func (t *CreateRuleGroupTool) InputSchema() interface{} {
 // validateSourceFields validates source_field values in a rule group
 func validateSourceFields(rg map[string]interface{}) error {
 	validPrefixes := []string{"text", "json", "kubernetes", "log"}
-	
+
 	subgroups, ok := rg["rule_subgroups"].([]interface{})
 	if !ok {
 		return nil // Will be caught by API validation
 	}
-	
+
 	for _, sg := range subgroups {
 		subgroup, ok := sg.(map[string]interface{})
 		if !ok {
 			continue
 		}
-		
+
 		rules, ok := subgroup["rules"].([]interface{})
 		if !ok {
 			continue
 		}
-		
+
 		for _, r := range rules {
 			rule, ok := r.(map[string]interface{})
 			if !ok {
 				continue
 			}
-			
+
 			sourceField, ok := rule["source_field"].(string)
 			if !ok || sourceField == "" {
 				continue
 			}
-			
+
 			// Check if source_field starts with a valid prefix
 			valid := false
 			for _, prefix := range validPrefixes {
@@ -369,13 +369,13 @@ func validateSourceFields(rg map[string]interface{}) error {
 					break
 				}
 			}
-			
+
 			if !valid {
 				return fmt.Errorf("invalid source_field '%s'. Valid fields:\n- text (main log message)\n- text.log (nested log field, common for Kubernetes)\n- text.<fieldname> (any nested field)\n- json.<fieldname> (custom JSON fields)\n- kubernetes.<fieldname> (Kubernetes metadata)\n- log.<fieldname> (log metadata)", sourceField)
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -385,12 +385,12 @@ func (t *CreateRuleGroupTool) Execute(ctx context.Context, args map[string]inter
 	if err != nil {
 		return NewToolResultError(err.Error()), nil
 	}
-	
+
 	// Validate source fields before sending to API
 	if err := validateSourceFields(rg); err != nil {
 		return NewToolResultError(fmt.Sprintf("Validation error: %v", err)), nil
 	}
-	
+
 	res, err := t.ExecuteRequest(ctx, &client.Request{Method: "POST", Path: "/v1/rule_groups", Body: rg})
 	if err != nil {
 		return NewToolResultError(err.Error()), nil
@@ -442,12 +442,12 @@ func (t *UpdateRuleGroupTool) Execute(ctx context.Context, args map[string]inter
 	if err != nil {
 		return NewToolResultError(err.Error()), nil
 	}
-	
+
 	// Validate source fields before sending to API
 	if err := validateSourceFields(rg); err != nil {
 		return NewToolResultError(fmt.Sprintf("Validation error: %v", err)), nil
 	}
-	
+
 	res, err := t.ExecuteRequest(ctx, &client.Request{Method: "PUT", Path: "/v1/rule_groups/" + id, Body: rg})
 	if err != nil {
 		return NewToolResultError(err.Error()), nil

@@ -224,6 +224,16 @@ func GetCacheHelper() *CacheHelper {
 	}
 }
 
+// GetCacheHelperFromContext returns a cache helper using the session from the given context.
+func GetCacheHelperFromContext(ctx context.Context) *CacheHelper {
+	session := GetSessionFromContext(ctx)
+	return &CacheHelper{
+		userID:     session.UserID,
+		instanceID: session.InstanceID,
+		manager:    cache.GetManager(),
+	}
+}
+
 // Get retrieves a cached value for a tool
 func (h *CacheHelper) Get(toolName, cacheKey string) (interface{}, bool) {
 	return h.manager.Get(h.userID, h.instanceID, toolName, cacheKey)

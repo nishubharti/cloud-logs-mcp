@@ -32,7 +32,7 @@ func GetAllTools(c *client.Client, logger *zap.Logger) []Tool {
 		NewCreateRuleGroupTool(c, logger),
 		NewUpdateRuleGroupTool(c, logger),
 		NewDeleteRuleGroupTool(c, logger),
-		
+
 		// Rule Helper tools
 		NewDiscoverLogFieldsTool(c, logger),
 		NewTestRuleGroupTool(c, logger),

@@ -16,6 +16,8 @@ const (
 	clientContextKey contextKey = "api_client"
 	// sessionContextKey is the context key for the user session.
 	sessionContextKey contextKey = "session"
+	// sessionProviderContextKey is the context key for the session provider.
+	sessionProviderContextKey contextKey = "session_provider"
 )
 
 // ErrNoClientInContext is returned when no API client is found in the context.
@@ -54,4 +56,25 @@ func GetSessionFromContext(ctx context.Context) *SessionContext {
 	}
 	// Fall back to global session for backward compatibility
 	return GetSession()
+}
+
+// SessionProvider provides access to the current session.
+// This interface allows different session resolution strategies
+// (e.g., global, per-request, per-tenant).
+type SessionProvider interface {
+	GetSession() *SessionContext
+}
+
+// WithSessionProvider adds a SessionProvider to the context.
+func WithSessionProvider(ctx context.Context, provider SessionProvider) context.Context {
+	return context.WithValue(ctx, sessionProviderContextKey, provider)
+}
+
+// GetSessionProviderFromContext retrieves the SessionProvider from the context.
+// Falls back to the global session manager if not found.
+func GetSessionProviderFromContext(ctx context.Context) SessionProvider {
+	if provider, ok := ctx.Value(sessionProviderContextKey).(SessionProvider); ok && provider != nil {
+		return provider
+	}
+	return GetSessionManager()
 }
