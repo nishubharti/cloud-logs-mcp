@@ -6,7 +6,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -295,19 +297,87 @@ func (s *ibmCloudLogsService) Query(ctx context.Context, req *QueryRequest) (*Qu
 	return response, nil
 }
 
-// parseQueryResponse parses the SSE query response into a structured format
+// parseQueryResponse parses the SSE query response into a structured format.
+// The /v1/query API returns Server-Sent Events where each "data:" line contains
+// one of: result (with log entries), warning, error, or query_id.
+// See parseSSEResponse in base.go for the full SSE message type documentation.
 func (s *ibmCloudLogsService) parseQueryResponse(body []byte, response *QueryResponse) error {
-	// Initialize events if nil
 	if response.Events == nil {
 		response.Events = []map[string]interface{}{}
 	}
-
-	// Empty body means no results
 	if len(body) == 0 {
 		return nil
 	}
 
 	s.logger.Debug("parsing query response", zap.Int("body_length", len(body)))
+
+	// Delegate to the shared SSE parser which handles all message types
+	bodyStr := string(body)
+	if !strings.Contains(bodyStr, "data:") {
+		// Not SSE — try as plain JSON array
+		var events []map[string]interface{}
+		if err := json.Unmarshal(body, &events); err == nil {
+			response.Events = events
+			response.TotalCount = len(events)
+			return nil
+		}
+		return nil
+	}
+
+	// Parse SSE data lines
+	maxEvents := response.Metadata.Limit
+	if maxEvents <= 0 {
+		maxEvents = 50000
+	}
+
+	var errors []string
+	lines := strings.Split(bodyStr, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimRight(line, "\r")
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		dataStr := strings.TrimPrefix(line, "data: ")
+		if dataStr == "" {
+			continue
+		}
+
+		var msg map[string]interface{}
+		if err := json.Unmarshal([]byte(dataStr), &msg); err != nil {
+			continue
+		}
+
+		// Handle "result" messages — extract log entries
+		if resultVal, ok := msg["result"].(map[string]interface{}); ok {
+			if results, ok := resultVal["results"].([]interface{}); ok {
+				for _, r := range results {
+					response.TotalCount++
+					if len(response.Events) >= maxEvents {
+						response.Truncated = true
+						continue
+					}
+					if entry, ok := r.(map[string]interface{}); ok {
+						response.Events = append(response.Events, entry)
+					}
+				}
+			}
+			continue
+		}
+
+		// Handle "error" messages
+		if errVal, ok := msg["error"].(map[string]interface{}); ok {
+			if errMsg, ok := errVal["message"].(string); ok {
+				errors = append(errors, errMsg)
+			}
+			continue
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("query error: %s", strings.Join(errors, "; "))
+	}
+
 	return nil
 }
 

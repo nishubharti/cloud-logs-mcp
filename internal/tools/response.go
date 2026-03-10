@@ -21,9 +21,10 @@ const (
 	// This ensures we never exceed limits that could cause "compaction failed" errors in Claude Desktop
 	FinalResponseLimit = 150 * 1024
 
-	// MaxSSEEvents is the maximum number of SSE events to parse from a query response
-	// This prevents memory issues and keeps results manageable for LLM context
-	MaxSSEEvents = 50
+	// MaxSSEEvents is the maximum number of log entries to retain from SSE parsing.
+	// Response-level truncation (MaxResultSize) handles size limits for the final output,
+	// so this cap only prevents excessive memory use during parsing.
+	MaxSSEEvents = 2000
 
 	// TruncationBufferSize is the buffer size reserved for warning messages when truncating results
 	TruncationBufferSize = 500
@@ -101,12 +102,16 @@ func CleanQueryResults(result map[string]interface{}) map[string]interface{} {
 	return cleaned
 }
 
-// transformLogEntry converts verbose log entry to compact format
+// transformLogEntry converts verbose log entry to compact format.
+// Handles both:
+//   - Legacy format: labels/metadata as []interface{} arrays, user_data as JSON string
+//   - Flattened format: labels/metadata as top-level keys, user_data as parsed map
 func transformLogEntry(entry map[string]interface{}) map[string]interface{} {
 	compact := make(map[string]interface{})
 
-	// Extract essential labels (app, subsystem)
+	// --- Labels ---
 	if labels, ok := entry["labels"].([]interface{}); ok {
+		// Legacy array format
 		for _, l := range labels {
 			if lm, ok := l.(map[string]interface{}); ok {
 				key, _ := lm["key"].(string)
@@ -122,10 +127,19 @@ func transformLogEntry(entry map[string]interface{}) map[string]interface{} {
 				}
 			}
 		}
+	} else {
+		// Flattened format — labels are top-level keys
+		if app, ok := entry["applicationname"].(string); ok && app != "" {
+			compact["app"] = app
+		}
+		if sub, ok := entry["subsystemname"].(string); ok && sub != "" {
+			compact["subsystem"] = sub
+		}
 	}
 
-	// Extract essential metadata (timestamp, severity)
+	// --- Metadata ---
 	if metadata, ok := entry["metadata"].([]interface{}); ok {
+		// Legacy array format
 		for _, m := range metadata {
 			if mm, ok := m.(map[string]interface{}); ok {
 				key, _ := mm["key"].(string)
@@ -142,14 +156,29 @@ func transformLogEntry(entry map[string]interface{}) map[string]interface{} {
 				}
 			}
 		}
+	} else {
+		// Flattened format — metadata are top-level keys
+		if ts, ok := entry["timestamp"].(string); ok && ts != "" {
+			compact["time"] = ts
+		}
+		if sev, ok := entry["severity"].(string); ok {
+			compact["severity"] = sev
+		}
 	}
 
-	// Parse and extract from user_data JSON
-	if userData, ok := entry["user_data"].(string); ok && userData != "" {
-		var ud map[string]interface{}
-		if err := json.Unmarshal([]byte(userData), &ud); err == nil {
-			extractUserData(ud, compact)
+	// --- User data ---
+	switch ud := entry["user_data"].(type) {
+	case string:
+		// Legacy: JSON string that needs parsing
+		if ud != "" {
+			var parsed map[string]interface{}
+			if err := json.Unmarshal([]byte(ud), &parsed); err == nil {
+				extractUserData(parsed, compact)
+			}
 		}
+	case map[string]interface{}:
+		// Already parsed by flattenLogEntry
+		extractUserData(ud, compact)
 	}
 
 	return compact
