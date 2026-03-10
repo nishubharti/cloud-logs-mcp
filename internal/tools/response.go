@@ -961,7 +961,11 @@ func (t *BaseTool) FormatResponseWithSummaryAndSuggestions(result map[string]int
 		}, nil
 	}
 
+	// Determine if this is a query result (compact or raw)
+	isQueryResult := resultType == "query results" || resultType == "raw query results"
+
 	// Clean query results to remove unnecessary fields (reduces response size ~30-50%)
+	// Skip cleaning for raw output — preserve full event payloads
 	if resultType == "query results" {
 		result = CleanQueryResults(result)
 	}
@@ -975,27 +979,26 @@ func (t *BaseTool) FormatResponseWithSummaryAndSuggestions(result map[string]int
 		wasTruncated = true
 	}
 
-	// Pretty print JSON
-	jsonBytes, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		// Return a valid CallToolResult with error message instead of nil
-		// This prevents "compaction failed" errors in Claude Desktop
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error formatting response: %v\n\nRaw data keys: %v", err, getMapKeys(result)),
-				},
-			},
-			IsError: true,
-		}, nil
-	}
-
 	// For query results, use markdown format instead of raw JSON
 	// This prevents the AI from misinterpreting log message content as JSON structure
 	var responseText string
-	if resultType == "query results" {
+	switch resultType {
+	case "query results":
 		responseText = formatLogsAsMarkdown(result, summary)
-	} else {
+	case "raw query results":
+		responseText = formatRawLogsAsMarkdown(result, summary)
+	default:
+		jsonBytes, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Error formatting response: %v\n\nRaw data keys: %v", err, getMapKeys(result)),
+					},
+				},
+				IsError: true,
+			}, nil
+		}
 		if summary != "" {
 			responseText = summary + "---\n\n### Raw Data\n\n" + string(jsonBytes)
 		} else {
@@ -1008,9 +1011,13 @@ func (t *BaseTool) FormatResponseWithSummaryAndSuggestions(result map[string]int
 	if len(responseText) > MaxResultSize {
 		truncatedBySize = true
 		// Regenerate with fewer entries
-		if resultType == "query results" {
+		switch resultType {
+		case "query results":
 			responseText = formatLogsAsMarkdownTruncated(result, summary, MaxResultSize-TruncationBufferSize)
-		} else {
+		case "raw query results":
+			responseText = formatRawLogsAsMarkdownTruncated(result, summary, MaxResultSize-TruncationBufferSize)
+		default:
+			jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 			_, truncatedBytes := truncateResult(result, MaxResultSize-len(summary)-TruncationBufferSize)
 			if truncatedBytes != nil {
 				if summary != "" {
@@ -1018,12 +1025,14 @@ func (t *BaseTool) FormatResponseWithSummaryAndSuggestions(result map[string]int
 				} else {
 					responseText = string(truncatedBytes)
 				}
+			} else if summary != "" {
+				responseText = summary + "---\n\n### Raw Data\n\n" + string(jsonBytes)
 			}
 		}
 	}
 
 	// Add pagination info for query results
-	if resultType == "query results" {
+	if isQueryResult {
 		paginationInfo := extractPaginationInfo(result, MaxSSEEvents, wasTruncated || truncatedBySize)
 		if paginationInfo != nil && paginationInfo.HasMore {
 			paginationMsg := fmt.Sprintf("\n\n---\n📄 **PAGINATION INFO:**\n"+
@@ -1305,6 +1314,139 @@ func formatLogsAsMarkdown(result map[string]interface{}, summary string) string 
 	}
 
 	sb.WriteString("\n---\n💡 Log entries are compacted to save tokens. To see the full JSON payload (including complete `user_data`), re-run with `raw_output: true`.\n")
+
+	return sb.String()
+}
+
+// formatRawLogsAsMarkdown formats log entries without compaction, preserving
+// the full event payload (including complete user_data). Each entry is rendered
+// as a JSON code block so the LLM can inspect structured fields.
+func formatRawLogsAsMarkdown(result map[string]interface{}, summary string) string {
+	var sb strings.Builder
+
+	if summary != "" {
+		sb.WriteString(summary)
+		sb.WriteString("---\n\n")
+	}
+
+	sb.WriteString("### Log Entries (raw)\n\n")
+
+	events, ok := result["events"].([]interface{})
+	if !ok || len(events) == 0 {
+		sb.WriteString("No log entries found.\n")
+		return sb.String()
+	}
+
+	for i, event := range events {
+		eventMap, ok := event.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Header line with index and key identifiers
+		fmt.Fprintf(&sb, "**[%d]** ", i+1)
+		if ts, ok := eventMap["timestamp"].(string); ok {
+			fmt.Fprintf(&sb, "`%s` ", ts)
+		}
+		if sev, ok := eventMap["severity"].(string); ok {
+			fmt.Fprintf(&sb, "[%s] ", sev)
+		}
+		if app, ok := eventMap["applicationname"].(string); ok {
+			fmt.Fprintf(&sb, "**%s**", app)
+			if sub, ok := eventMap["subsystemname"].(string); ok {
+				fmt.Fprintf(&sb, "/%s", sub)
+			}
+			sb.WriteString(" ")
+		}
+		sb.WriteString("\n")
+
+		// Render the full entry as a JSON code block
+		entryJSON, err := json.MarshalIndent(eventMap, "", "  ")
+		if err != nil {
+			fmt.Fprintf(&sb, "```\n(error serializing entry: %v)\n```\n\n", err)
+			continue
+		}
+		fmt.Fprintf(&sb, "```json\n%s\n```\n\n", string(entryJSON))
+	}
+
+	// Add query metadata if present
+	if meta, ok := result["_query_metadata"].(map[string]interface{}); ok {
+		sb.WriteString("---\n### Query Metadata\n")
+		if tier, ok := meta["tier"].(string); ok {
+			fmt.Fprintf(&sb, "- **Tier:** %s\n", tier)
+		}
+		if inst, ok := meta["instance"].(map[string]interface{}); ok {
+			if name, ok := inst["instance_name"].(string); ok && name != "" {
+				fmt.Fprintf(&sb, "- **Instance:** %s\n", name)
+			}
+			if region, ok := inst["region"].(string); ok {
+				fmt.Fprintf(&sb, "- **Region:** %s\n", region)
+			}
+		}
+	}
+
+	return sb.String()
+}
+
+// formatRawLogsAsMarkdownTruncated formats raw log entries with a size limit.
+// Each entry is rendered as a JSON code block, stopping when maxSize is approached.
+func formatRawLogsAsMarkdownTruncated(result map[string]interface{}, summary string, maxSize int) string {
+	var sb strings.Builder
+
+	if summary != "" {
+		sb.WriteString(summary)
+		sb.WriteString("---\n\n")
+	}
+
+	sb.WriteString("### Log Entries (raw, truncated)\n\n")
+
+	events, ok := result["events"].([]interface{})
+	if !ok || len(events) == 0 {
+		sb.WriteString("No log entries found.\n")
+		return sb.String()
+	}
+
+	totalEvents := len(events)
+	shownEvents := 0
+
+	for i, event := range events {
+		if sb.Len() > maxSize-1000 {
+			break
+		}
+
+		eventMap, ok := event.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		fmt.Fprintf(&sb, "**[%d]** ", i+1)
+		if ts, ok := eventMap["timestamp"].(string); ok {
+			fmt.Fprintf(&sb, "`%s` ", ts)
+		}
+		if sev, ok := eventMap["severity"].(string); ok {
+			fmt.Fprintf(&sb, "[%s] ", sev)
+		}
+		if app, ok := eventMap["applicationname"].(string); ok {
+			fmt.Fprintf(&sb, "**%s**", app)
+			if sub, ok := eventMap["subsystemname"].(string); ok {
+				fmt.Fprintf(&sb, "/%s", sub)
+			}
+			sb.WriteString(" ")
+		}
+		sb.WriteString("\n")
+
+		entryJSON, err := json.MarshalIndent(eventMap, "", "  ")
+		if err != nil {
+			fmt.Fprintf(&sb, "```\n(error serializing entry: %v)\n```\n\n", err)
+		} else {
+			fmt.Fprintf(&sb, "```json\n%s\n```\n\n", string(entryJSON))
+		}
+		shownEvents++
+	}
+
+	if shownEvents < totalEvents {
+		fmt.Fprintf(&sb, "\n---\n⚠️ **Showing %d of %d log entries.** Use `summary_only: true` or add filters to reduce results.\n", shownEvents, totalEvents)
+	}
 
 	return sb.String()
 }

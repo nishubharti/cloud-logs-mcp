@@ -708,6 +708,41 @@ func TestFormatLogsAsMarkdownTruncated_IncludesRawOutputHint(t *testing.T) {
 		"truncated log output should hint about raw_output for full JSON")
 }
 
+func TestFormatRawLogsAsMarkdown_PreservesFullPayload(t *testing.T) {
+	result := map[string]interface{}{
+		"events": []interface{}{
+			map[string]interface{}{
+				"applicationname": "my-app",
+				"subsystemname":   "worker",
+				"timestamp":       "2026-03-09T10:00:00Z",
+				"severity":        "3",
+				"user_data": map[string]interface{}{
+					"message":  "order processed",
+					"order_id": "ORD-12345",
+					"amount":   99.99,
+				},
+			},
+		},
+	}
+
+	output := formatRawLogsAsMarkdown(result, "")
+	assert.Contains(t, output, "### Log Entries (raw)")
+	assert.Contains(t, output, "my-app")
+	assert.Contains(t, output, "```json")
+	assert.Contains(t, output, "ORD-12345", "raw output should preserve custom user_data fields")
+	assert.Contains(t, output, "99.99")
+}
+
+func TestFormatRawLogsAsMarkdown_EmptyEvents(t *testing.T) {
+	result := map[string]interface{}{
+		"events": ([]interface{})(nil),
+	}
+
+	output := formatRawLogsAsMarkdown(result, "## Summary\n\n")
+	assert.Contains(t, output, "No log entries found.")
+	assert.Contains(t, output, "## Summary")
+}
+
 // Benchmark the new parser against realistic payloads
 func BenchmarkParseSSEResponse_Realistic(b *testing.B) {
 	// Build a realistic SSE response with 200 log entries
