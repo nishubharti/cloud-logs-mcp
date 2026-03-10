@@ -11,9 +11,9 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.uber.org/zap"
 
-	"github.com/tareqmamari/logs-mcp-server/internal/cache"
-	"github.com/tareqmamari/logs-mcp-server/internal/client"
-	"github.com/tareqmamari/logs-mcp-server/internal/tracing"
+	"github.com/tareqmamari/cloud-logs-mcp/internal/cache"
+	"github.com/tareqmamari/cloud-logs-mcp/internal/client"
+	"github.com/tareqmamari/cloud-logs-mcp/internal/tracing"
 )
 
 // Tool timeout constants for different operation types.
@@ -160,51 +160,300 @@ func (t *BaseTool) ExecuteRequest(ctx context.Context, req *client.Request) (map
 	return result, nil
 }
 
-// parseSSEResponse attempts to parse a response body as Server-Sent Events
-// Returns nil if parsing fails or if it doesn't look like SSE
-// Limits to MaxSSEEvents to prevent memory issues with large result sets
+// SSEParseResult holds the classified output from parsing an SSE response.
+// It separates log entries from control messages (warnings, errors, query IDs)
+// so consumers get clean data without having to re-inspect every event.
+type SSEParseResult struct {
+	Events    []interface{}          // Flattened log entries from "result" messages
+	Warnings  []string               // Warning messages (compile, time range, result limit)
+	Errors    []string               // Error messages from the API
+	QueryID   string                 // Query ID if provided by the API
+	Metadata  map[string]interface{} // Any additional metadata
+	Total     int                    // Total SSE data lines seen (before cap)
+	Truncated bool                   // Whether events were capped
+}
+
+// parseSSEResponse attempts to parse a response body as Server-Sent Events.
+// Returns nil if the body doesn't look like SSE.
+//
+// IBM Cloud Logs /v1/query returns SSE with four message types:
+//   - result  → contains results[] array with log entries
+//   - warning → compile warnings, time range adjustments, result limit warnings
+//   - error   → query execution errors
+//   - query_id → internal query identifier
+//
+// Each log entry in results[] has:
+//   - labels[]    → key/value pairs (applicationname, subsystemname, ...)
+//   - metadata[]  → key/value pairs (timestamp, severity, ...)
+//   - user_data   → JSON string containing the actual log payload
+//
+// The parser extracts individual log entries, parses user_data JSON strings,
+// and flattens labels/metadata into the entry for downstream consumption.
 func parseSSEResponse(body []byte) map[string]interface{} {
 	bodyStr := string(body)
 	if !strings.Contains(bodyStr, "data:") {
 		return nil
 	}
 
-	// Simple SSE parser for our use case
-	// We expect lines starting with "data: " containing JSON
-	// We'll aggregate them into a list of events
-	var events []interface{}
-	totalCount := 0
-	truncated := false
+	parsed := parseSSEMessages(bodyStr, MaxSSEEvents)
+	if len(parsed.Events) == 0 && len(parsed.Errors) == 0 && len(parsed.Warnings) == 0 && parsed.QueryID == "" {
+		return nil
+	}
+
+	result := map[string]interface{}{
+		"events": parsed.Events,
+	}
+
+	if parsed.Truncated {
+		result["_truncated"] = true
+		result["_total_events"] = parsed.Total
+		result["_shown_events"] = len(parsed.Events)
+	}
+
+	if len(parsed.Warnings) > 0 {
+		result["_warnings"] = parsed.Warnings
+	}
+
+	if len(parsed.Errors) > 0 {
+		result["_errors"] = parsed.Errors
+	}
+
+	if parsed.QueryID != "" {
+		result["_query_id"] = parsed.QueryID
+	}
+
+	return result
+}
+
+// parseSSEMessages processes raw SSE text and classifies each data line
+// by its message type. maxEvents caps how many log entries are kept in memory.
+func parseSSEMessages(bodyStr string, maxEvents int) *SSEParseResult {
+	parsed := &SSEParseResult{}
 	lines := strings.Split(bodyStr, "\n")
+
 	for _, line := range lines {
-		if strings.HasPrefix(line, "data: ") {
-			totalCount++
-			// Limit the number of events to prevent memory issues
-			if len(events) >= MaxSSEEvents {
-				truncated = true
-				continue // Keep counting but don't add more events
+		line = strings.TrimRight(line, "\r")
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		dataStr := strings.TrimPrefix(line, "data: ")
+		if dataStr == "" {
+			continue
+		}
+
+		var msg map[string]interface{}
+		if err := json.Unmarshal([]byte(dataStr), &msg); err != nil {
+			continue
+		}
+
+		classifySSEMessage(msg, parsed, maxEvents)
+	}
+
+	return parsed
+}
+
+// classifySSEMessage routes a single parsed SSE JSON object to the correct
+// handler based on which top-level key is present.
+func classifySSEMessage(msg map[string]interface{}, parsed *SSEParseResult, maxEvents int) {
+	switch {
+	case msg["result"] != nil:
+		handleSSEResult(msg["result"], parsed, maxEvents)
+	case msg["error"] != nil:
+		handleSSEError(msg["error"], parsed)
+	case msg["warning"] != nil:
+		handleSSEWarning(msg["warning"], parsed)
+	case msg["query_id"] != nil:
+		handleSSEQueryID(msg["query_id"], parsed)
+	default:
+		// Unknown message type — treat as a raw event for backward compatibility
+		parsed.Total++
+		if len(parsed.Events) < maxEvents {
+			parsed.Events = append(parsed.Events, msg)
+		} else {
+			parsed.Truncated = true
+		}
+	}
+}
+
+// handleSSEResult extracts log entries from a "result" message.
+// Each result message contains a results[] array of log entries.
+func handleSSEResult(resultVal interface{}, parsed *SSEParseResult, maxEvents int) {
+	resultObj, ok := resultVal.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	results, ok := resultObj["results"].([]interface{})
+	if !ok {
+		// No nested results — treat the result object itself as an event
+		parsed.Total++
+		if len(parsed.Events) < maxEvents {
+			parsed.Events = append(parsed.Events, resultObj)
+		} else {
+			parsed.Truncated = true
+		}
+		return
+	}
+
+	for _, r := range results {
+		parsed.Total++
+		if len(parsed.Events) >= maxEvents {
+			parsed.Truncated = true
+			continue
+		}
+
+		entry, ok := r.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		parsed.Events = append(parsed.Events, flattenLogEntry(entry))
+	}
+}
+
+// flattenLogEntry converts a raw API log entry into a flat, LLM-friendly map.
+//
+// Input format (from API):
+//
+//	{
+//	  "labels": [{"key": "applicationname", "value": "myapp"}, ...],
+//	  "metadata": [{"key": "timestamp", "value": "2024-..."}, ...],
+//	  "user_data": "{\"message\": \"hello\", ...}"
+//	}
+//
+// Output format:
+//
+//	{
+//	  "applicationname": "myapp",
+//	  "timestamp": "2024-...",
+//	  "severity": "5",
+//	  "user_data": {"message": "hello", ...}   // parsed JSON object
+//	}
+func flattenLogEntry(entry map[string]interface{}) map[string]interface{} {
+	flat := make(map[string]interface{})
+
+	// Flatten labels array → top-level keys
+	if labels, ok := entry["labels"].([]interface{}); ok {
+		for _, l := range labels {
+			lm, ok := l.(map[string]interface{})
+			if !ok {
+				continue
 			}
-			dataStr := strings.TrimPrefix(line, "data: ")
-			var data map[string]interface{}
-			if err := json.Unmarshal([]byte(dataStr), &data); err == nil {
-				events = append(events, data)
+			key, _ := lm["key"].(string)
+			value, _ := lm["value"].(string)
+			if key != "" && value != "" {
+				flat[key] = value
 			}
 		}
 	}
 
-	if len(events) > 0 {
-		result := map[string]interface{}{
-			"events": events,
+	// Flatten metadata array → top-level keys
+	if metadata, ok := entry["metadata"].([]interface{}); ok {
+		for _, m := range metadata {
+			mm, ok := m.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			key, _ := mm["key"].(string)
+			value, _ := mm["value"].(string)
+			if key != "" {
+				flat[key] = value
+			}
 		}
-		if truncated {
-			result["_truncated"] = true
-			result["_total_events"] = totalCount
-			result["_shown_events"] = len(events)
-		}
-		return result
 	}
 
-	return nil
+	// Parse user_data JSON string into a proper object
+	if userData, ok := entry["user_data"].(string); ok && userData != "" {
+		var parsed map[string]interface{}
+		if err := json.Unmarshal([]byte(userData), &parsed); err == nil {
+			flat["user_data"] = parsed
+		} else {
+			// Not valid JSON — keep as string
+			flat["user_data"] = userData
+		}
+	}
+
+	// Preserve any other top-level fields not already handled
+	for k, v := range entry {
+		if k == "labels" || k == "metadata" || k == "user_data" {
+			continue
+		}
+		flat[k] = v
+	}
+
+	return flat
+}
+
+// handleSSEError extracts error messages from an "error" SSE message.
+//
+// API format:
+//
+//	{"error": {"message": "Failed to run the query ...", "code": {"rate_limit_reached": {}}}}
+func handleSSEError(errorVal interface{}, parsed *SSEParseResult) {
+	switch e := errorVal.(type) {
+	case map[string]interface{}:
+		if msg, ok := e["message"].(string); ok {
+			parsed.Errors = append(parsed.Errors, msg)
+		} else {
+			// Serialize the whole error object as fallback
+			if b, err := json.Marshal(e); err == nil {
+				parsed.Errors = append(parsed.Errors, string(b))
+			}
+		}
+	case string:
+		parsed.Errors = append(parsed.Errors, e)
+	}
+}
+
+// handleSSEWarning extracts warning messages from a "warning" SSE message.
+//
+// The warning object may contain one of:
+//   - compile_warning: {"warning_message": "..."}
+//   - time_range_warning: {"warning_message": "...", "start_date": "...", "end_date": "..."}
+//   - number_of_results_limit_warning: {"number_of_results_limit": 10000}
+func handleSSEWarning(warningVal interface{}, parsed *SSEParseResult) {
+	warnObj, ok := warningVal.(map[string]interface{})
+	if !ok {
+		if s, ok := warningVal.(string); ok {
+			parsed.Warnings = append(parsed.Warnings, s)
+		}
+		return
+	}
+
+	// Check each known warning sub-type
+	warningTypes := []string{"compile_warning", "time_range_warning", "number_of_results_limit_warning"}
+	for _, wt := range warningTypes {
+		sub, ok := warnObj[wt].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if msg, ok := sub["warning_message"].(string); ok {
+			parsed.Warnings = append(parsed.Warnings, msg)
+		} else if limit, ok := sub["number_of_results_limit"].(float64); ok {
+			parsed.Warnings = append(parsed.Warnings, fmt.Sprintf("Results capped at %d by the API", int(limit)))
+		}
+	}
+
+	// If no known sub-type matched, serialize the whole warning
+	if len(parsed.Warnings) == 0 {
+		if b, err := json.Marshal(warnObj); err == nil {
+			parsed.Warnings = append(parsed.Warnings, string(b))
+		}
+	}
+}
+
+// handleSSEQueryID extracts the query identifier from a "query_id" SSE message.
+//
+// API format: {"query_id": {"query_id": "4rwoNx1XNcc"}}
+func handleSSEQueryID(queryIDVal interface{}, parsed *SSEParseResult) {
+	switch q := queryIDVal.(type) {
+	case map[string]interface{}:
+		if id, ok := q["query_id"].(string); ok {
+			parsed.QueryID = id
+		}
+	case string:
+		parsed.QueryID = q
+	}
 }
 
 // CacheHelper provides cache operations scoped to the current user/instance
