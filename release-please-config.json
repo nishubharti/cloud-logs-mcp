@@ -26,6 +26,16 @@
         ".release-please-manifest.json",
         "release-please-config.json",
         "commitlint.config.js"
+      ],
+      "extra-files": [
+        ".agents/skills/ibm-cloud-logs-query/SKILL.md",
+        ".agents/skills/ibm-cloud-logs-alerting/SKILL.md",
+        ".agents/skills/ibm-cloud-logs-incident-investigation/SKILL.md",
+        ".agents/skills/ibm-cloud-logs-dashboards/SKILL.md",
+        ".agents/skills/ibm-cloud-logs-cost-optimization/SKILL.md",
+        ".agents/skills/ibm-cloud-logs-ingestion/SKILL.md",
+        ".agents/skills/ibm-cloud-logs-access-control/SKILL.md",
+        ".agents/skills/ibm-cloud-logs-api-reference/SKILL.md"
       ]
     }
   }
