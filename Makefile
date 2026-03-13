@@ -1,4 +1,4 @@
-.PHONY: help build test lint clean run install deps docker-build docker-run
+.PHONY: help build test lint clean run install deps docker-build docker-run install-skills install-skills-project list-skills uninstall-skills
 
 # Variables
 BINARY_NAME=logs-mcp-server
@@ -413,6 +413,19 @@ release-major: ## Create major release (for breaking changes)
 	git push origin $$NEXT_VERSION; \
 	echo "✅ Tag $$NEXT_VERSION created and pushed!"; \
 	echo "GoReleaser will generate changelog in GitHub Release."
+
+# Agent Skills targets
+install-skills: build ## Install agent skills to ~/.agents/skills/
+	@$(BUILD_DIR)/$(BINARY_NAME) skills install
+
+install-skills-project: build ## Install agent skills to ./.agents/skills/ (project-level)
+	@$(BUILD_DIR)/$(BINARY_NAME) skills install --project
+
+list-skills: build ## List available agent skills
+	@$(BUILD_DIR)/$(BINARY_NAME) skills list
+
+uninstall-skills: build ## Remove installed agent skills
+	@$(BUILD_DIR)/$(BINARY_NAME) skills remove
 
 # Development helpers
 watch: ## Watch for changes and rebuild

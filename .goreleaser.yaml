@@ -115,6 +115,17 @@ release:
 
     **Or download a binary** from the assets below and add it to your `PATH`.
 
+    ### Agent Skills {{ .Version }}
+    This release includes 8 portable Agent Skills (agentskills.io) embedded in the binary.
+    Skills work with Bob, Claude Code, Cursor, Gemini CLI, GitHub Copilot, and 30+ other agents.
+
+    ```bash
+    # Install skills after brew install:
+    logs-mcp-server skills install            # user-level (~/.agents/skills/)
+    logs-mcp-server skills install --project  # project-level (./.agents/skills/)
+    logs-mcp-server skills list               # see all available skills
+    ```
+
     See the [README](https://github.com/tareqmamari/cloud-logs-mcp#installation) for full setup instructions including Claude Desktop configuration.
 
   footer: |
@@ -137,6 +148,9 @@ brews:
       system "#{bin}/logs-mcp-server", "--version"
     install: |
       bin.install "logs-mcp-server"
+    post_install: |
+      # Auto-install embedded agent skills to user-level directory
+      system "#{bin}/logs-mcp-server", "skills", "install"
     caveats: |
       To use logs-mcp-server, you need to configure:
         1. Get your IBM Cloud API key: https://cloud.ibm.com/iam/apikeys
@@ -144,6 +158,14 @@ brews:
            export LOGS_API_KEY='your-api-key'
            export LOGS_SERVICE_URL='https://[instance-id].api.[region].logs.cloud.ibm.com'
         3. Configure in Claude Desktop
+
+      Agent Skills (8 skills for IBM Cloud Logs) have been installed to ~/.agents/skills/
+      These work with Claude Code, Cursor, Gemini CLI, GitHub Copilot, and 30+ other agents.
+
+      Manage skills:
+        logs-mcp-server skills list               # list available skills
+        logs-mcp-server skills install             # reinstall to ~/.agents/skills/
+        logs-mcp-server skills install --project   # install to current project
 
       For more information, see: https://github.com/tareqmamari/cloud-logs-mcp
 
