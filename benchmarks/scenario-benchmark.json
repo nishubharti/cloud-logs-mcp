@@ -1,0 +1,62 @@
+{
+  "metadata": {
+    "instance": "cxint eu-gb",
+    "query_tier": "archive",
+    "query_window": "24h",
+    "bytes_per_token_ratio": 3.79,
+    "mcp_fixed_overhead_tokens": 18794
+  },
+  "scenarios": {
+    "scenario1": {
+      "name": "Incident Investigation",
+      "skills_knowledge_tokens": 22318,
+      "skills_knowledge_bytes": 84586,
+      "skills_knowledge_files": 7,
+      "skills_query_tokens": 80770,
+      "skills_query_bytes": 306119,
+      "skills_query_count": 7,
+      "skills_total_tokens": 103088,
+      "mcp_fixed_tokens": 18794,
+      "mcp_response_tokens": 5850,
+      "mcp_tool_count": 7,
+      "mcp_total_tokens": 24644,
+      "ratio_mcp_to_skills": 0.24
+    },
+    "scenario2": {
+      "name": "Cost Optimization",
+      "skills_knowledge_tokens": 11392,
+      "skills_knowledge_bytes": 43177,
+      "skills_knowledge_files": 4,
+      "skills_query_tokens": 2277,
+      "skills_query_bytes": 8630,
+      "skills_query_count": 4,
+      "skills_total_tokens": 13669,
+      "mcp_fixed_tokens": 18794,
+      "mcp_response_tokens": 3500,
+      "mcp_tool_count": 7,
+      "mcp_total_tokens": 22294,
+      "ratio_mcp_to_skills": 1.63
+    },
+    "scenario3": {
+      "name": "Monitoring Setup",
+      "skills_knowledge_tokens": 22243,
+      "skills_knowledge_bytes": 84301,
+      "skills_knowledge_files": 8,
+      "skills_query_tokens": 1513,
+      "skills_query_bytes": 5736,
+      "skills_query_count": 6,
+      "skills_total_tokens": 23756,
+      "mcp_fixed_tokens": 18794,
+      "mcp_response_tokens": 3650,
+      "mcp_tool_count": 6,
+      "mcp_total_tokens": 22444,
+      "ratio_mcp_to_skills": 0.94
+    }
+  },
+  "totals": {
+    "skills_total_tokens": 140513,
+    "mcp_total_tokens": 69382,
+    "overall_winner": "MCP",
+    "overall_delta_tokens": 71131
+  }
+}
