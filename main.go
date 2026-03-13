@@ -33,6 +33,7 @@ import (
 
 	"github.com/tareqmamari/cloud-logs-mcp/internal/config"
 	"github.com/tareqmamari/cloud-logs-mcp/internal/server"
+	"github.com/tareqmamari/cloud-logs-mcp/internal/skills"
 )
 
 // Build information - set at build time via ldflags
@@ -46,7 +47,28 @@ var (
 
 // main is the entry point for the IBM Cloud Logs MCP server.
 // It initializes the server, loads configuration, and handles graceful shutdown.
+//
+// Subcommands:
+//
+//	logs-mcp-server                    Start the MCP server (default)
+//	logs-mcp-server --version          Print version information
+//	logs-mcp-server skills install     Install agent skills to ~/.agents/skills/
+//	logs-mcp-server skills install --project  Install to ./.agents/skills/ (project-level)
+//	logs-mcp-server skills list        List available embedded skills
+//	logs-mcp-server skills remove      Remove installed skills
 func main() {
+	// Handle subcommands before initializing the MCP server
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--version", "-v", "version":
+			fmt.Printf("logs-mcp-server %s (commit: %s, built by: %s)\n", version, commit, builtBy)
+			return
+		case "skills":
+			runSkillsCommand(os.Args[2:])
+			return
+		}
+	}
+
 	// Load .env file if it exists (optional, for development)
 	_ = godotenv.Load()
 
@@ -131,6 +153,107 @@ func main() {
 
 	// Allow a brief moment for final cleanup
 	time.Sleep(100 * time.Millisecond)
+}
+
+// runSkillsCommand handles the "skills" subcommand.
+func runSkillsCommand(args []string) {
+	inst := skills.NewInstaller(SkillsFS, version)
+
+	if len(args) == 0 {
+		printSkillsUsage()
+		return
+	}
+
+	switch args[0] {
+	case "install":
+		projectLevel := false
+		for _, arg := range args[1:] {
+			if arg == "--project" || arg == "-p" {
+				projectLevel = true
+			}
+		}
+
+		installed, err := inst.Install("", projectLevel)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		dest := "~/.agents/skills/"
+		if projectLevel {
+			dest = "./.agents/skills/"
+		}
+		fmt.Printf("Installed %d skills to %s\n\n", len(installed), dest)
+		for _, name := range installed {
+			fmt.Printf("  + %s\n", name)
+		}
+		fmt.Printf("\nSkills are now available to Claude Code, Cursor, Gemini CLI, GitHub Copilot, and other agents.\n")
+
+	case "list":
+		skillList, err := inst.List()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("IBM Cloud Logs Agent Skills (v%s)\n\n", version)
+		for _, s := range skillList {
+			fmt.Printf("  %-45s %s\n", s.Name, s.Description)
+		}
+		fmt.Printf("\n%d skills available. Run 'logs-mcp-server skills install' to install.\n", len(skillList))
+
+	case "remove":
+		projectLevel := false
+		for _, arg := range args[1:] {
+			if arg == "--project" || arg == "-p" {
+				projectLevel = true
+			}
+		}
+
+		removed, err := inst.Remove("", projectLevel)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(removed) == 0 {
+			fmt.Println("No IBM Cloud Logs skills found to remove.")
+		} else {
+			fmt.Printf("Removed %d skills:\n\n", len(removed))
+			for _, name := range removed {
+				fmt.Printf("  - %s\n", name)
+			}
+		}
+
+	case "help", "--help", "-h":
+		printSkillsUsage()
+
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown skills command: %s\n\n", args[0])
+		printSkillsUsage()
+		os.Exit(1)
+	}
+}
+
+func printSkillsUsage() {
+	fmt.Println(`Usage: logs-mcp-server skills <command> [options]
+
+Manage IBM Cloud Logs agent skills (agentskills.io format).
+Skills work with Claude Code, Cursor, Gemini CLI, GitHub Copilot, and 30+ other agents.
+
+Commands:
+  install            Install skills to ~/.agents/skills/ (user-level, all projects)
+  install --project  Install skills to ./.agents/skills/ (project-level, current project only)
+  list               List all available embedded skills
+  remove             Remove installed skills from ~/.agents/skills/
+  remove --project   Remove installed skills from ./.agents/skills/
+  help               Show this help message
+
+Examples:
+  logs-mcp-server skills list
+  logs-mcp-server skills install
+  logs-mcp-server skills install --project
+  logs-mcp-server skills remove`)
 }
 
 // initLogger initializes and returns a zap logger.
