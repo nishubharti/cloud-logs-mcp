@@ -1,0 +1,343 @@
+{
+  "fixed_overhead_tokens": 18229,
+  "fixed_overhead_bytes": 69087,
+  "scenarios": {
+    "s5": {
+      "label": "S5: Query Authoring & Validation",
+      "skills": {
+        "steps": [
+          {
+            "label": "Read query/SKILL.md",
+            "bytes": 17714,
+            "tokens": 4674,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read dataprime-commands.md",
+            "bytes": 12724,
+            "tokens": 3357,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read query-templates.md",
+            "bytes": 16443,
+            "tokens": 4339,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read dataprime-functions.md",
+            "bytes": 8429,
+            "tokens": 2224,
+            "category": "skill_read"
+          }
+        ],
+        "total_tokens": 14594
+      },
+      "mcp": {
+        "steps": [
+          {
+            "label": "build_query",
+            "bytes": 534,
+            "tokens": 141,
+            "category": "tool_response"
+          },
+          {
+            "label": "validate_query (with AND mistake)",
+            "bytes": 380,
+            "tokens": 100,
+            "category": "tool_response"
+          },
+          {
+            "label": "validate_query (correct)",
+            "bytes": 402,
+            "tokens": 106,
+            "category": "tool_response"
+          },
+          {
+            "label": "explain_query",
+            "bytes": 2400,
+            "tokens": 633,
+            "category": "tool_response"
+          },
+          {
+            "label": "get_dataprime_reference",
+            "bytes": 741,
+            "tokens": 196,
+            "category": "tool_response"
+          },
+          {
+            "label": "get_query_templates",
+            "bytes": 4029,
+            "tokens": 1063,
+            "category": "tool_response"
+          },
+          {
+            "label": "estimate_query_cost",
+            "bytes": 676,
+            "tokens": 178,
+            "category": "tool_response"
+          }
+        ],
+        "response_tokens": 2417,
+        "total_tokens": 20646
+      },
+      "winner": "Skills",
+      "delta_tokens": 6052,
+      "delta_pct": 29
+    },
+    "s6": {
+      "label": "S6: Ingestion Pipeline",
+      "skills": {
+        "steps": [
+          {
+            "label": "Read ingestion/SKILL.md",
+            "bytes": 14521,
+            "tokens": 3831,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read parsing-rules.md",
+            "bytes": 6643,
+            "tokens": 1753,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read enrichment-types.md",
+            "bytes": 2806,
+            "tokens": 740,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read log-format.md",
+            "bytes": 3601,
+            "tokens": 950,
+            "category": "skill_read"
+          },
+          {
+            "label": "GET /v1/rule_groups (list, 0)",
+            "bytes": 144,
+            "tokens": 38,
+            "category": "api_call"
+          },
+          {
+            "label": "GET /v1/enrichments (list)",
+            "bytes": 18,
+            "tokens": 5,
+            "category": "api_call"
+          }
+        ],
+        "total_tokens": 7317
+      },
+      "mcp": {
+        "steps": [
+          {
+            "label": "list_rule_groups",
+            "bytes": 302,
+            "tokens": 80,
+            "category": "error_retry"
+          },
+          {
+            "label": "list_enrichments",
+            "bytes": 181,
+            "tokens": 48,
+            "category": "tool_response"
+          },
+          {
+            "label": "discover_log_fields",
+            "bytes": 99,
+            "tokens": 26,
+            "category": "tool_response"
+          }
+        ],
+        "response_tokens": 154,
+        "total_tokens": 18383
+      },
+      "winner": "Skills",
+      "delta_tokens": 11066,
+      "delta_pct": 60
+    },
+    "s7": {
+      "label": "S7: Data Governance",
+      "skills": {
+        "steps": [
+          {
+            "label": "Read access-control/SKILL.md",
+            "bytes": 14659,
+            "tokens": 3868,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read access-rules.md",
+            "bytes": 5717,
+            "tokens": 1508,
+            "category": "skill_read"
+          },
+          {
+            "label": "GET /v1/data_access_rules (list)",
+            "bytes": 24,
+            "tokens": 6,
+            "category": "api_call"
+          },
+          {
+            "label": "GET /v1/outgoing_webhooks (list, 0)",
+            "bytes": 24,
+            "tokens": 6,
+            "category": "api_call"
+          },
+          {
+            "label": "POST /v1/outgoing_webhooks (create)",
+            "bytes": 154,
+            "tokens": 41,
+            "category": "api_call"
+          }
+        ],
+        "total_tokens": 5429
+      },
+      "mcp": {
+        "steps": [
+          {
+            "label": "list_data_access_rules",
+            "bytes": 269,
+            "tokens": 71,
+            "category": "tool_response"
+          },
+          {
+            "label": "list_outgoing_webhooks",
+            "bytes": 260,
+            "tokens": 69,
+            "category": "tool_response"
+          },
+          {
+            "label": "create_outgoing_webhook",
+            "bytes": 256,
+            "tokens": 68,
+            "category": "error_retry"
+          }
+        ],
+        "response_tokens": 208,
+        "total_tokens": 18437
+      },
+      "winner": "Skills",
+      "delta_tokens": 13008,
+      "delta_pct": 71
+    },
+    "s8": {
+      "label": "S8: E2M & Streaming",
+      "skills": {
+        "steps": [
+          {
+            "label": "Read cost-optimization/SKILL.md",
+            "bytes": 14865,
+            "tokens": 3922,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read e2m-guide.md",
+            "bytes": 7662,
+            "tokens": 2022,
+            "category": "skill_read"
+          },
+          {
+            "label": "GET /v1/e2m (list)",
+            "bytes": 0,
+            "tokens": 0,
+            "category": "api_call"
+          },
+          {
+            "label": "GET /v1/streams (list)",
+            "bytes": 14,
+            "tokens": 4,
+            "category": "api_call"
+          },
+          {
+            "label": "GET /v1/event_stream_targets (list)",
+            "bytes": 0,
+            "tokens": 0,
+            "category": "api_call"
+          }
+        ],
+        "total_tokens": 5948
+      },
+      "mcp": {
+        "steps": [
+          {
+            "label": "list_e2m",
+            "bytes": 230,
+            "tokens": 61,
+            "category": "tool_response"
+          },
+          {
+            "label": "list_streams",
+            "bytes": 219,
+            "tokens": 58,
+            "category": "tool_response"
+          },
+          {
+            "label": "get_event_stream_targets",
+            "bytes": 195,
+            "tokens": 51,
+            "category": "tool_response"
+          }
+        ],
+        "response_tokens": 170,
+        "total_tokens": 18399
+      },
+      "winner": "Skills",
+      "delta_tokens": 12451,
+      "delta_pct": 68
+    },
+    "s9": {
+      "label": "S9: API Discovery & Meta",
+      "skills": {
+        "steps": [
+          {
+            "label": "Read api-reference/SKILL.md",
+            "bytes": 20838,
+            "tokens": 5498,
+            "category": "skill_read"
+          },
+          {
+            "label": "Read endpoints.md",
+            "bytes": 6988,
+            "tokens": 1844,
+            "category": "skill_read"
+          }
+        ],
+        "total_tokens": 7342
+      },
+      "mcp": {
+        "steps": [
+          {
+            "label": "list_tool_categories",
+            "bytes": 2339,
+            "tokens": 617,
+            "category": "tool_response"
+          },
+          {
+            "label": "search_tools (alert)",
+            "bytes": 1007,
+            "tokens": 266,
+            "category": "tool_response"
+          },
+          {
+            "label": "session_context",
+            "bytes": 123,
+            "tokens": 32,
+            "category": "error_retry"
+          },
+          {
+            "label": "health_check",
+            "bytes": 563,
+            "tokens": 149,
+            "category": "tool_response"
+          }
+        ],
+        "response_tokens": 1064,
+        "total_tokens": 19293
+      },
+      "winner": "Skills",
+      "delta_tokens": 11951,
+      "delta_pct": 62
+    }
+  }
+}

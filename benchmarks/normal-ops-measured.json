@@ -1,0 +1,202 @@
+{
+  "scenario": "4-normal-operations",
+  "skills": {
+    "steps": [
+      {
+        "label": "Read alerting/SKILL.md",
+        "bytes": 19514,
+        "tokens": 5149,
+        "category": "skill_read"
+      },
+      {
+        "label": "Read strategy-matrix.md",
+        "bytes": 12870,
+        "tokens": 3396,
+        "category": "skill_read"
+      },
+      {
+        "label": "POST /v1/alert_definitions (create)",
+        "bytes": 724,
+        "tokens": 191,
+        "category": "api_call"
+      },
+      {
+        "label": "GET /v1/alert_definitions (list, 0 alerts)",
+        "bytes": 748,
+        "tokens": 197,
+        "category": "api_call"
+      },
+      {
+        "label": "GET /v1/alert_definitions/{id} (get)",
+        "bytes": 724,
+        "tokens": 191,
+        "category": "api_call"
+      },
+      {
+        "label": "DELETE /v1/alert_definitions/{id} (delete)",
+        "bytes": 0,
+        "tokens": 0,
+        "category": "api_call"
+      },
+      {
+        "label": "Read dashboards/SKILL.md",
+        "bytes": 11614,
+        "tokens": 3064,
+        "category": "skill_read"
+      },
+      {
+        "label": "Read dashboard-schema.md",
+        "bytes": 6144,
+        "tokens": 1621,
+        "category": "skill_read"
+      },
+      {
+        "label": "POST /v1/dashboards (create)",
+        "bytes": 749,
+        "tokens": 198,
+        "category": "api_call"
+      },
+      {
+        "label": "GET /v1/dashboards (list, 4 dashboards)",
+        "bytes": 870,
+        "tokens": 230,
+        "category": "api_call"
+      },
+      {
+        "label": "GET /v1/dashboards/{id} (get)",
+        "bytes": 749,
+        "tokens": 198,
+        "category": "api_call"
+      },
+      {
+        "label": "DELETE /v1/dashboards/{id} (delete)",
+        "bytes": 0,
+        "tokens": 0,
+        "category": "api_call"
+      },
+      {
+        "label": "Read access-control/SKILL.md",
+        "bytes": 14659,
+        "tokens": 3868,
+        "category": "skill_read"
+      },
+      {
+        "label": "POST /v1/views (create)",
+        "bytes": 340,
+        "tokens": 90,
+        "category": "api_call"
+      },
+      {
+        "label": "GET /v1/views (list, 13 views)",
+        "bytes": 4644,
+        "tokens": 1225,
+        "category": "api_call"
+      },
+      {
+        "label": "DELETE /v1/views/{id} (delete)",
+        "bytes": 0,
+        "tokens": 0,
+        "category": "api_call"
+      }
+    ],
+    "by_category": {
+      "skill_read": {
+        "tokens": 17098,
+        "bytes": 64801,
+        "count": 5
+      },
+      "api_call": {
+        "tokens": 2520,
+        "bytes": 9548,
+        "count": 11
+      }
+    },
+    "total_tokens": 19618
+  },
+  "mcp": {
+    "steps": [
+      {
+        "label": "tools/list (96 tools)",
+        "bytes": 69087,
+        "tokens": 18229,
+        "category": "fixed_overhead"
+      },
+      {
+        "label": "create_alert_definition",
+        "bytes": 1276,
+        "tokens": 337,
+        "category": "tool_response"
+      },
+      {
+        "label": "list_alert_definitions",
+        "bytes": 1480,
+        "tokens": 391,
+        "category": "tool_response"
+      },
+      {
+        "label": "get_alert_definition",
+        "bytes": 1279,
+        "tokens": 337,
+        "category": "tool_response"
+      },
+      {
+        "label": "delete_alert_definition",
+        "bytes": 92,
+        "tokens": 24,
+        "category": "tool_response"
+      },
+      {
+        "label": "create_dashboard",
+        "bytes": 2681,
+        "tokens": 707,
+        "category": "tool_response"
+      },
+      {
+        "label": "list_dashboards",
+        "bytes": 1540,
+        "tokens": 406,
+        "category": "tool_response"
+      },
+      {
+        "label": "get_dashboard",
+        "bytes": 2740,
+        "tokens": 723,
+        "category": "tool_response"
+      },
+      {
+        "label": "delete_dashboard",
+        "bytes": 93,
+        "tokens": 25,
+        "category": "tool_response"
+      },
+      {
+        "label": "create_view",
+        "bytes": 709,
+        "tokens": 187,
+        "category": "tool_response"
+      },
+      {
+        "label": "list_views",
+        "bytes": 9964,
+        "tokens": 2629,
+        "category": "tool_response"
+      }
+    ],
+    "by_category": {
+      "fixed_overhead": {
+        "tokens": 18229,
+        "bytes": 69087,
+        "count": 1
+      },
+      "tool_response": {
+        "tokens": 5766,
+        "bytes": 21854,
+        "count": 10
+      }
+    },
+    "total_tokens": 23995
+  },
+  "winner": "Skills",
+  "delta_tokens": 4377,
+  "delta_pct": 18
+}

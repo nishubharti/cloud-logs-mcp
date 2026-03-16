@@ -1,0 +1,103 @@
+{
+  "fixed_overhead_tokens": 18229,
+  "fixed_overhead_bytes": 69087,
+  "scenarios": {
+    "s1": {
+      "steps": [
+        {
+          "label": "investigate_incident (global, 24h)",
+          "bytes": 879,
+          "tokens": 232,
+          "category": "tool_response"
+        },
+        {
+          "label": "suggest_alert (radiant)",
+          "bytes": 18350,
+          "tokens": 4842,
+          "category": "tool_response"
+        },
+        {
+          "label": "create_alert_definition",
+          "bytes": 1075,
+          "tokens": 284,
+          "category": "tool_response"
+        }
+      ],
+      "response_tokens": 5358,
+      "total_tokens": 23587
+    },
+    "s2": {
+      "steps": [
+        {
+          "label": "list_policies",
+          "bytes": 6568,
+          "tokens": 1733,
+          "category": "tool_response"
+        },
+        {
+          "label": "query_logs (volume by severity)",
+          "bytes": 441,
+          "tokens": 116,
+          "category": "tool_response"
+        },
+        {
+          "label": "query_logs (volume by app)",
+          "bytes": 621,
+          "tokens": 164,
+          "category": "tool_response"
+        },
+        {
+          "label": "estimate_query_cost",
+          "bytes": 786,
+          "tokens": 207,
+          "category": "tool_response"
+        },
+        {
+          "label": "create_policy (INFO\u2192archive)",
+          "bytes": 1009,
+          "tokens": 266,
+          "category": "tool_response"
+        }
+      ],
+      "response_tokens": 2486,
+      "total_tokens": 20715
+    },
+    "s3": {
+      "steps": [
+        {
+          "label": "query_logs (discover apps)",
+          "bytes": 622,
+          "tokens": 164,
+          "category": "tool_response"
+        },
+        {
+          "label": "suggest_alert (radiant monitoring)",
+          "bytes": 20538,
+          "tokens": 5419,
+          "category": "tool_response"
+        },
+        {
+          "label": "create_alert_definition (monitor)",
+          "bytes": 1067,
+          "tokens": 282,
+          "category": "tool_response"
+        },
+        {
+          "label": "list_outgoing_webhooks",
+          "bytes": 260,
+          "tokens": 69,
+          "category": "tool_response"
+        },
+        {
+          "label": "create_dashboard",
+          "bytes": 2938,
+          "tokens": 775,
+          "category": "tool_response"
+        }
+      ],
+      "response_tokens": 6709,
+      "total_tokens": 24938
+    }
+  },
+  "grand_total_tokens": 32782
+}
