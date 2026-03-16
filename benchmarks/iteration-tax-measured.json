@@ -1,0 +1,352 @@
+{
+  "scenarios": {
+    "s1": {
+      "steps": [
+        {
+          "step": 1,
+          "name": "Read skill: incident-investigation/SKILL.md",
+          "bytes": 16265,
+          "tokens": 4292,
+          "category": "skill_read"
+        },
+        {
+          "step": 2,
+          "name": "Read skill: query/SKILL.md",
+          "bytes": 15712,
+          "tokens": 4146,
+          "category": "skill_read"
+        },
+        {
+          "step": 3,
+          "name": "GET /v1/tco_policies",
+          "bytes": 0,
+          "tokens": 0,
+          "category": "api_call"
+        },
+        {
+          "step": 4,
+          "name": "Query with frequent_search (wrong tier)",
+          "bytes": 221,
+          "tokens": 58,
+          "category": "error_retry"
+        },
+        {
+          "step": 5,
+          "name": "Query global error rate (archive)",
+          "bytes": 1978,
+          "tokens": 522,
+          "category": "query_success"
+        },
+        {
+          "step": 6,
+          "name": "Query with AND (wrong syntax)",
+          "bytes": 275,
+          "tokens": 73,
+          "category": "error_retry"
+        },
+        {
+          "step": 7,
+          "name": "Query with && (fixed)",
+          "bytes": 25545,
+          "tokens": 6740,
+          "category": "query_success"
+        },
+        {
+          "step": 8,
+          "name": "Global error timeline",
+          "bytes": 1675,
+          "tokens": 442,
+          "category": "query_success"
+        },
+        {
+          "step": 9,
+          "name": "Critical errors (raw)",
+          "bytes": 148099,
+          "tokens": 39076,
+          "category": "query_success"
+        },
+        {
+          "step": 10,
+          "name": "Read skill: investigation-queries.md",
+          "bytes": 6180,
+          "tokens": 1631,
+          "category": "skill_read"
+        },
+        {
+          "step": 11,
+          "name": "Query with = (wrong syntax)",
+          "bytes": 258,
+          "tokens": 68,
+          "category": "error_retry"
+        },
+        {
+          "step": 12,
+          "name": "Component error patterns (fixed)",
+          "bytes": 203,
+          "tokens": 54,
+          "category": "query_success"
+        },
+        {
+          "step": 13,
+          "name": "Component subsystems",
+          "bytes": 659,
+          "tokens": 174,
+          "category": "query_success"
+        },
+        {
+          "step": 14,
+          "name": "Component dependencies",
+          "bytes": 82,
+          "tokens": 22,
+          "category": "query_success"
+        },
+        {
+          "step": 15,
+          "name": "Read skill: heuristic-details.md",
+          "bytes": 8118,
+          "tokens": 2142,
+          "category": "skill_read"
+        },
+        {
+          "step": 16,
+          "name": "Read skill: alerting/SKILL.md",
+          "bytes": 19514,
+          "tokens": 5149,
+          "category": "skill_read"
+        },
+        {
+          "step": 17,
+          "name": "Read skill: burn-rate-math.md",
+          "bytes": 5927,
+          "tokens": 1564,
+          "category": "skill_read"
+        },
+        {
+          "step": 18,
+          "name": "CLI: --from-file error",
+          "bytes": 91,
+          "tokens": 24,
+          "category": "error_retry"
+        },
+        {
+          "step": 19,
+          "name": "Create alert via API (fixed)",
+          "bytes": 0,
+          "tokens": 0,
+          "category": "api_call"
+        }
+      ],
+      "happy_path_tokens": 65954,
+      "iteration_tax_tokens": 223,
+      "total_tokens": 66177
+    },
+    "s2": {
+      "steps": [
+        {
+          "step": 1,
+          "name": "Read skill: cost-optimization/SKILL.md",
+          "bytes": 14865,
+          "tokens": 3922,
+          "category": "skill_read"
+        },
+        {
+          "step": 2,
+          "name": "Read skill: query/SKILL.md",
+          "bytes": 15712,
+          "tokens": 4146,
+          "category": "skill_read"
+        },
+        {
+          "step": 3,
+          "name": "GET /v1/tco_policies",
+          "bytes": 0,
+          "tokens": 0,
+          "category": "api_call"
+        },
+        {
+          "step": 4,
+          "name": "Query with sort (wrong syntax)",
+          "bytes": 507,
+          "tokens": 134,
+          "category": "error_retry"
+        },
+        {
+          "step": 5,
+          "name": "Volume by severity (fixed)",
+          "bytes": 638,
+          "tokens": 168,
+          "category": "query_success"
+        },
+        {
+          "step": 6,
+          "name": "Volume by application",
+          "bytes": 2021,
+          "tokens": 533,
+          "category": "query_success"
+        },
+        {
+          "step": 7,
+          "name": "Volume by app + severity",
+          "bytes": 5967,
+          "tokens": 1574,
+          "category": "query_success"
+        },
+        {
+          "step": 8,
+          "name": "Read skill: tco-policies.md",
+          "bytes": 4938,
+          "tokens": 1303,
+          "category": "skill_read"
+        },
+        {
+          "step": 9,
+          "name": "CLI: --from-file error",
+          "bytes": 91,
+          "tokens": 24,
+          "category": "error_retry"
+        },
+        {
+          "step": 10,
+          "name": "Create TCO policy via API",
+          "bytes": 0,
+          "tokens": 0,
+          "category": "api_call"
+        },
+        {
+          "step": 11,
+          "name": "Read skill: e2m-guide.md",
+          "bytes": 7662,
+          "tokens": 2022,
+          "category": "skill_read"
+        }
+      ],
+      "happy_path_tokens": 13668,
+      "iteration_tax_tokens": 158,
+      "total_tokens": 13826
+    },
+    "s3": {
+      "steps": [
+        {
+          "step": 1,
+          "name": "Read skill: query/SKILL.md",
+          "bytes": 15712,
+          "tokens": 4146,
+          "category": "skill_read"
+        },
+        {
+          "step": 2,
+          "name": "Read skill: alerting/SKILL.md",
+          "bytes": 19514,
+          "tokens": 5149,
+          "category": "skill_read"
+        },
+        {
+          "step": 3,
+          "name": "Discover applications",
+          "bytes": 2367,
+          "tokens": 625,
+          "category": "query_success"
+        },
+        {
+          "step": 4,
+          "name": "Query with \"double quotes\" (may error)",
+          "bytes": 264,
+          "tokens": 70,
+          "category": "error_retry"
+        },
+        {
+          "step": 5,
+          "name": "App patterns (single quotes)",
+          "bytes": 2507,
+          "tokens": 661,
+          "category": "query_success"
+        },
+        {
+          "step": 6,
+          "name": "Error rate baseline",
+          "bytes": 391,
+          "tokens": 103,
+          "category": "query_success"
+        },
+        {
+          "step": 7,
+          "name": "Read skill: component-profiles.md",
+          "bytes": 7235,
+          "tokens": 1909,
+          "category": "skill_read"
+        },
+        {
+          "step": 8,
+          "name": "Read skill: strategy-matrix.md",
+          "bytes": 12870,
+          "tokens": 3396,
+          "category": "skill_read"
+        },
+        {
+          "step": 9,
+          "name": "CLI: --from-file error",
+          "bytes": 55,
+          "tokens": 15,
+          "category": "error_retry"
+        },
+        {
+          "step": 10,
+          "name": "Create alert via API",
+          "bytes": 0,
+          "tokens": 0,
+          "category": "api_call"
+        },
+        {
+          "step": 11,
+          "name": "GET /v1/outgoing_webhooks",
+          "bytes": 24,
+          "tokens": 6,
+          "category": "api_call"
+        },
+        {
+          "step": 12,
+          "name": "Read skill: dashboards/SKILL.md",
+          "bytes": 11614,
+          "tokens": 3064,
+          "category": "skill_read"
+        },
+        {
+          "step": 13,
+          "name": "Read skill: dashboard-schema.md",
+          "bytes": 6144,
+          "tokens": 1621,
+          "category": "skill_read"
+        },
+        {
+          "step": 14,
+          "name": "CLI: dashboard-create not found",
+          "bytes": 88,
+          "tokens": 23,
+          "category": "error_retry"
+        },
+        {
+          "step": 15,
+          "name": "Create dashboard via REST (attempt 1)",
+          "bytes": 144,
+          "tokens": 38,
+          "category": "api_call"
+        },
+        {
+          "step": 16,
+          "name": "Create dashboard via REST (attempt 2)",
+          "bytes": 144,
+          "tokens": 38,
+          "category": "error_retry"
+        }
+      ],
+      "happy_path_tokens": 20718,
+      "iteration_tax_tokens": 146,
+      "total_tokens": 20864
+    }
+  },
+  "auth_tokens": 440,
+  "grand_happy_path": 100340,
+  "grand_iteration_tax": 527,
+  "grand_total": 101307,
+  "mcp_total": 71382
+}
