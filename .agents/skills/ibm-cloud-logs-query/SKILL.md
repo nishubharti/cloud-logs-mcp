@@ -344,6 +344,55 @@ ibmcloud logs bgq-data --id <query-id> --output json
 
 The CLI handles authentication, SSE parsing, and output formatting automatically — no manual token exchange or header management required.
 
+## CRITICAL: Query Execution Strategy
+
+These rules prevent raw log data from flooding the context window. A single
+unfiltered query can return 148KB+ (39,000 tokens). Follow these rules strictly.
+
+### Rule 1: Always Use Aggregation Before Raw Logs
+
+Before ANY raw log query (`limit` without `groupby`), run an aggregation first:
+
+```
+source logs | filter $m.severity >= ERROR
+| groupby $l.applicationname aggregate count() as error_count
+| orderby -error_count | limit 20
+```
+
+Only fetch raw logs for a SPECIFIC application/pattern identified by the aggregation.
+
+### Rule 2: Use Companion Scripts for Execution
+
+For incident investigation, use the investigation script instead of manual queries:
+
+```bash
+python3 scripts/investigate.py --application api-gateway --time-range 1h --output-file /tmp/report.md
+```
+
+For any query, use the compactor to avoid raw SSE in context:
+
+```bash
+python3 scripts/query-compact.py \
+  --query "source logs | filter $m.severity >= ERROR | limit 100" \
+  --output-file /tmp/results.md
+```
+
+### Rule 3: Aggregation-First Query Ladder
+
+Follow this order for any investigation:
+
+1. **Scope** (aggregation): `groupby $l.applicationname aggregate count() as errors`
+2. **Patterns** (aggregation): `groupby $d.message:string aggregate count() as occurrences`
+3. **Timeline** (aggregation): `groupby roundTime($m.timestamp, 5m) aggregate count() as errors`
+4. **Details** (raw, targeted): `filter $l.applicationname == 'specific-app' | limit 10`
+
+Never skip to step 4.
+
+### Rule 4: Always Limit Raw Queries
+
+Never run `| limit 50` or higher on raw log queries. Use `| limit 10` maximum.
+For larger datasets, use aggregation queries or the query-compact script.
+
 ## Context Management
 
 To minimize context window usage, follow these practices:
@@ -369,5 +418,7 @@ To minimize context window usage, follow these practices:
 - [DataPrime Functions Reference](references/dataprime-functions.md) — Aggregation, string, time, conditional, array functions
 - [Lucene Integration](references/lucene-integration.md) — Lucene syntax and combining with DataPrime
 - [Query Validation Script](scripts/validate-query.sh) — Offline DataPrime query validator (supports `--json`, `--output-file`)
+- [Query Compactor](../../scripts/query-compact.py) — Run any query with automatic SSE parsing and result compaction
+- [Investigation Script](../../scripts/investigate.py) — Run full incident investigation pipeline, returns compact markdown
 
-> **Windows note:** Scripts require bash (available via [Git for Windows](https://gitforwindows.org/) or WSL).
+> **Windows note:** Bash scripts require bash (available via [Git for Windows](https://gitforwindows.org/) or WSL). Python scripts require Python 3.9+ and `pip install requests`.

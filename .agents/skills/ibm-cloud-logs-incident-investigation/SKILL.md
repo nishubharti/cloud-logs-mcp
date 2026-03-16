@@ -285,6 +285,31 @@ ibmcloud logs bgq-create \
 
 For full automation, the investigation phases can be scripted by chaining multiple `ibmcloud logs query` calls and applying the heuristic patterns described above.
 
+## CRITICAL: Use the Investigation Script
+
+For ANY incident investigation, ALWAYS start with the companion script:
+
+```bash
+# Global scan (all applications)
+python3 scripts/investigate.py --time-range 1h --output-file /tmp/report.md
+
+# Component deep-dive
+python3 scripts/investigate.py --application api-gateway --time-range 1h --output-file /tmp/report.md
+
+# Request tracing
+python3 scripts/investigate.py --trace-id abc123 --output-file /tmp/report.md
+```
+
+This runs the full investigation pipeline (mode selection, 3-4 queries, SSE parsing,
+heuristic matching, evidence synthesis) and returns a compact markdown report
+(~1KB vs 178KB for raw query data). **Saves 99% of tokens** compared to manual
+multi-step queries.
+
+Only fall back to manual queries if the script is unavailable. If running manually:
+1. **Always start with aggregation queries** -- never raw log queries
+2. **Use the query compactor**: `python3 scripts/query-compact.py --query "..." --output-file /tmp/results.md`
+3. **Follow the query ladder**: Scope → Patterns → Timeline → Details (targeted, limit 10)
+
 ## Context Management
 
 To minimize context window usage, follow these practices:
@@ -297,6 +322,8 @@ To minimize context window usage, follow these practices:
 
 ## Additional Resources
 
+- [Investigation Script](../../scripts/investigate.py) -- **Start here.** Full investigation pipeline, returns compact markdown
+- [Query Compactor](../../scripts/query-compact.py) -- Run any query with automatic SSE parsing and result compaction
 - [Investigation Queries Reference](references/investigation-queries.md) -- all DataPrime queries from all 3 strategies
 - [Heuristic Details](references/heuristic-details.md) -- full pattern lists, SOPs, and escalation paths
 - [Remediation Assets](references/remediation-assets.md) -- alert and dashboard generation details
