@@ -98,13 +98,16 @@ jobs:
             skill_md="$skill_dir/SKILL.md"
             [ -f "$skill_md" ] || continue
 
-            # Find all relative markdown links: [text](path)
-            grep -oE '\[.[^]]*\]\([^)]+\)' "$skill_md" | sed 's/.*](//' | sed 's/)$//' | while read -r ref; do
-              # Skip external URLs and anchors
-              case "$ref" in
-                http://*|https://*|#*) continue ;;
-              esac
-
+            # Extract markdown link targets: [text](path) -> path
+            # Filter to relative paths only (skip http/https/anchors)
+            python3 -c "
+          import re, sys
+          text = open(sys.argv[1]).read()
+          for m in re.finditer(r'\[.*?\]\(([^)]+)\)', text):
+              ref = m.group(1)
+              if not ref.startswith(('http://', 'https://', '#')):
+                  print(ref)
+          " "$skill_md" | while read -r ref; do
               target="$skill_dir/$ref"
               if [ ! -e "$target" ]; then
                 echo "::error::Broken reference in $skill_md: $ref -> $target"
