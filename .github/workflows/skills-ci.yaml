@@ -187,9 +187,9 @@ jobs:
           for skill_dir in .agents/skills/ibm-cloud-logs-*/; do
             name=$(basename "$skill_dir")
             lines=$(wc -l < "$skill_dir/SKILL.md" 2>/dev/null || echo 0)
-            refs=$(find "$skill_dir/references" -type f 2>/dev/null | wc -l)
-            assets=$(find "$skill_dir/assets" -type f 2>/dev/null | wc -l)
-            scripts=$(find "$skill_dir/scripts" -type f 2>/dev/null | wc -l)
+            refs=$(find "$skill_dir/references" -type f 2>/dev/null | wc -l || echo 0)
+            assets=$(find "$skill_dir/assets" -type f 2>/dev/null | wc -l || echo 0)
+            scripts=$(find "$skill_dir/scripts" -type f 2>/dev/null | wc -l || echo 0)
             echo "| $name | $lines | $refs | $assets | $scripts |" >> "$GITHUB_STEP_SUMMARY"
             total_skills=$((total_skills + 1))
           done
